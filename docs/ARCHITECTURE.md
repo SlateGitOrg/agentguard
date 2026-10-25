@@ -62,7 +62,8 @@ reasons accumulate:
 1. **Tool exists** in the registry. Unknown tools are denied and marked non-executable.
 2. **Arguments** are a JSON object that validates against the tool's closed schema.
 3. **Explicit deny rules** of the task: capability pattern matches and every constrained
-   argument is present and satisfies its constraint. Evaluated per declared capability
+   argument is present and satisfies its constraint (for a list argument, *any* element
+   that satisfies all of that argument's constraints triggers the rule). Evaluated per declared capability
    with that capability's argument aliases applied.
 4. **Grants**: for *each* capability the tool declares, the first grant covering it whose
    constraints accept the (aliased) arguments. A tool with `fs.read` and `fs.write` needs
@@ -119,7 +120,8 @@ tasks:
 Constraint kinds: `glob`, `deny_glob`, `url` (`hosts` with `*.suffix` wildcards,
 `schemes`, `ports`, `path_prefixes`), `max`, `min`, `one_of` (type-strict), `regex` (full
 match), `max_length`, `email` (`domains`, `addresses`). List-valued arguments are checked
-element-wise.
+element-wise: a grant accepts a list only if *every* element passes, while a deny rule fires
+if *any* element matches, so one benign element can never dilute a forbidden one.
 
 **Binding** (`Policy.bind(registry)`) rejects, at load time, anything that would make a
 policy grant more than its author believed:
