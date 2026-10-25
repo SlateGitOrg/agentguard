@@ -42,7 +42,7 @@ eval: .venv
 # Real model run (needs a local Ollama with llama3.1:8b; slow, never part of `check`).
 eval-ollama: .venv
 	$(RUN) agentguard -v eval --provider ollama --model llama3.1:8b \
-		--configs unguarded,guard-unattended --max-turns 8 \
+		--configs unguarded,guard-unattended --max-turns 8 --calls-per-turn 1 --prefix-steps 1 \
 		--out evals/results --stem scenarios-llama3.1-8b
 
 bench: .venv
