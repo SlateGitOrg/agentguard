@@ -12,7 +12,7 @@ sandboxed fake tools (files, e-mail, web, payments; nothing has real effects), a
 scenario suite. The suite measures how much ordinary work gets through and checks that
 injected instructions cannot move money or data.
 
-> Lab and portfolio project. All tools are fakes acting on an in-memory fixture world, and
+> Research-grade reference implementation. All tools are fakes acting on an in-memory fixture world, and
 > all attacks are hand-written prompt-injection fixtures against that world. See
 > [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
@@ -37,7 +37,7 @@ deciding. agentguard moves that decision out of the model:
 
 It is meant for engineers who embed tool-using LLMs in products and want an enforcement
 layer they can read in an afternoon, and for anyone studying prompt-injection defences
-with real numbers instead of anecdotes.
+with measured numbers.
 
 ## Architecture
 
@@ -62,7 +62,9 @@ flowchart LR
 decision procedure, its complexity, the policy language and the audit format are covered
 in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Quickstart
+## Quick start
+
+Prerequisites: [uv](https://docs.astral.sh/uv/) (Python 3.12 is installed by uv). Ollama is optional and only needed for the real-model run.
 
 ```bash
 uv sync --frozen               # Python 3.12, deps pinned in uv.lock
@@ -96,7 +98,7 @@ session = GuardedSession(PolicyEngine(policy, registry, "bookkeeper"),
 result = session.call(ToolCall("pay", {"payee_id": "acme", "amount": 120, "currency": "USD"}))
 ```
 
-## Demo output
+## Usage example: demo output
 
 `make demo` from a real run. It plays three scenarios with a scripted model that obeys
 every injected instruction, first unguarded and then under the guard with nobody
@@ -295,8 +297,8 @@ The full list with costs is in [DECISIONS.md](DECISIONS.md). The main ones:
 * **Everything is simulated.** The tools are fakes and the fixture world, web pages and
   e-mails are hand-written. No real system was ever touched. Real tools need honest
   specs and output labels, and a wrongly labelled tool silently disables taint.
-* **Small, single-author scenario set.** 32 scenarios, and the held-out split was written
-  by the same author as the policy. The percentages illustrate trade-offs. They are not
+* **Small scenario set.** 32 scenarios, and the held-out split was written by the same
+  authors as the policy. The percentages illustrate trade-offs. They are not
   statistically meaningful estimates.
 * **Coarse taint costs utility.** After one untrusted read, every high-impact action in
   that session needs a human. The intended pattern is splitting work into a reading
@@ -329,7 +331,7 @@ The full list with costs is in [DECISIONS.md](DECISIONS.md). The main ones:
 * More real-model runs (larger local models, several seeds) and an externally written
   attack set.
 
-## Repository layout
+## Project layout
 
 ```
 src/agentguard/      engine, policy, constraints, labels, audit, session, agent, CLI
@@ -343,7 +345,8 @@ docs/                ARCHITECTURE.md, THREAT_MODEL.md
 tests/               unit, property, integration and CLI tests
 ```
 
-CI (`.github/workflows/ci.yml`) runs `make check`, `make demo` and `make fuzz`. The repo
-has not been pushed, so CI has not run yet; the same commands pass locally.
+CI (`.github/workflows/ci.yml`) runs `make check`, `make demo` and `make fuzz`.
 
-License: MIT.
+## License
+
+MIT — see [LICENSE](LICENSE).

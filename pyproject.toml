@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Capability-based permission engine, taint tracking and tamper-evident audit for LLM agent tool calls"
 readme = "README.md"
 license = "MIT"
-authors = [{ name = "archit2501" }]
+authors = [{ name = "agentguard contributors" }]
 requires-python = ">=3.12"
 dependencies = [
     "pyyaml==6.0.2",
