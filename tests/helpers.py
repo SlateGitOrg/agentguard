@@ -86,6 +86,7 @@ def mini_registry() -> ToolRegistry:
                 ("fs.read", "fs.write"),
                 obj({"path": s, "dest": s}),
                 Impact.MEDIUM,
+                arg_aliases={"fs.write": {"path": "dest"}},
             ),
             BOTTOM,
         ),

@@ -38,6 +38,8 @@ def test_capability_matches(pattern: str, cap: str, ok: bool) -> None:
         ({"args_schema": {"type": "string"}}, "must be an object schema"),
         ({"args_schema": {"type": "object", "properties": {"x": {"type": "date"}}}}, "type"),
         ({"spend": SpendSpec("amount", "currency")}, "spend argument 'amount'"),
+        ({"arg_aliases": {"fs.write": {"path": "dest"}}}, "undeclared capability"),
+        ({"arg_aliases": {"x.y": {"path": "dest"}}}, "alias target 'dest'"),
     ],
 )
 def test_toolspec_validation(kwargs: dict[str, Any], fragment: str) -> None:
@@ -72,6 +74,16 @@ def test_openai_schema_strips_extensions() -> None:
         "sensitive"
         not in arr.openai_schema()["function"]["parameters"]["properties"]["xs"]["items"]
     )
+
+
+def test_arg_aliases_view() -> None:
+    spec = mini_registry().get("copy").spec
+    args = {"path": "a", "dest": "b"}
+    assert spec.args_for("fs.read", args) == args
+    assert spec.args_for("fs.write", args) == {"path": "b", "dest": "b"}
+    assert spec.args_for("fs.write", {"path": "a"}) == {}
+    assert spec.resolve_arg("fs.write", "path") == "dest"
+    assert spec.resolve_arg("fs.read", "path") == "path"
 
 
 def test_registry_operations() -> None:

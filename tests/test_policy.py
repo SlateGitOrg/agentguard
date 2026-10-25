@@ -176,6 +176,19 @@ def test_bind_errors(old: str, new: str, fragment: str) -> None:
     assert fragment in str(info.value)
 
 
+def test_bind_resolves_aliases_for_multi_capability_tools() -> None:
+    # 'copy' declares fs.write with path->dest; dest is required, so binding succeeds and an
+    # optional alias target would be rejected exactly like an optional plain argument.
+    parse_policy(policy_doc(GOOD)).bind(mini_registry())
+    doc = policy_doc(
+        GOOD.replace(
+            "- capability: fs.write",
+            "- capability: fs.write\n        constraints: {path: {glob: [out/**]}}",
+        )
+    )
+    parse_policy(doc).bind(mini_registry())
+
+
 def test_load_policy_file_errors(tmp_path: Path) -> None:
     with pytest.raises(PolicyError, match="cannot read policy file"):
         load_policy(tmp_path / "missing.yaml")

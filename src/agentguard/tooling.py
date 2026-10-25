@@ -64,6 +64,11 @@ class ToolSpec:
     output_label: Label = BOTTOM
     egress: bool = False
     spend: SpendSpec | None = None
+    # Per-capability argument aliases for multi-capability tools. ``{"fs.write": {"path":
+    # "dest"}}`` means: when an fs.write grant (or deny rule) constrains ``path``, check this
+    # tool's ``dest`` argument instead. Without it, a ``copy(path, dest)`` tool would have its
+    # write target unconstrained by grants written for ``write_file(path, ...)``.
+    arg_aliases: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not TOOL_NAME_RE.match(self.name):
@@ -76,8 +81,14 @@ class ToolSpec:
         if self.args_schema.get("type") != "object":
             raise SchemaError(f"tool {self.name}: argument schema must be an object schema")
         check_schema(self.args_schema, f"{self.name}.args")
+        props = self.args_schema.get("properties", {})
+        for cap, aliases in self.arg_aliases.items():
+            if cap not in self.capabilities:
+                raise SchemaError(f"tool {self.name}: alias for undeclared capability {cap!r}")
+            for target in aliases.values():
+                if target not in props:
+                    raise SchemaError(f"tool {self.name}: alias target {target!r} not in schema")
         if self.spend is not None:
-            props = self.args_schema.get("properties", {})
             for arg in (self.spend.amount_arg, self.spend.currency_arg):
                 if arg not in props:
                     raise SchemaError(f"tool {self.name}: spend argument {arg!r} not in schema")
@@ -85,6 +96,23 @@ class ToolSpec:
     @property
     def argument_names(self) -> frozenset[str]:
         return frozenset(self.args_schema.get("properties", {}))
+
+    def resolve_arg(self, capability: str, arg: str) -> str:
+        """The tool argument that policy argument ``arg`` refers to for ``capability``."""
+        return self.arg_aliases.get(capability, {}).get(arg, arg)
+
+    def args_for(self, capability: str, args: Mapping[str, Any]) -> Mapping[str, Any]:
+        """View of ``args`` as seen by grants for ``capability`` (aliases applied)."""
+        aliases = self.arg_aliases.get(capability)
+        if not aliases:
+            return args
+        view = dict(args)
+        for policy_arg, tool_arg in aliases.items():
+            if tool_arg in args:
+                view[policy_arg] = args[tool_arg]
+            else:
+                view.pop(policy_arg, None)
+        return view
 
     @property
     def sensitive_args(self) -> frozenset[str]:

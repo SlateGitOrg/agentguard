@@ -458,23 +458,33 @@ def _covered_tools(pattern: str, specs: list[ToolSpec]) -> list[ToolSpec]:
 
 
 def _check_constrained_args(
-    constraints: tuple[ArgumentConstraints, ...], tools: list[ToolSpec], where: str
+    pattern: str,
+    constraints: tuple[ArgumentConstraints, ...],
+    tools: list[ToolSpec],
+    where: str,
+    *,
+    require: bool,
 ) -> None:
+    """Every constrained argument must exist in every covered tool (after per-capability
+    aliasing) and, for grants, be *required* -- else omitting it would skip the check."""
     for spec in tools:
         required = set(spec.args_schema.get("required", []))
+        caps = [c for c in spec.capabilities if capability_matches(pattern, c)]
         for arg_constraints in constraints:
-            arg = arg_constraints.arg
-            if arg not in spec.argument_names:
-                raise PolicyError(
-                    f"constraint on {arg!r} but covered tool {spec.name!r} has no such argument",
-                    where=where,
-                )
-            if arg not in required:
-                raise PolicyError(
-                    f"constraint on {arg!r} but it is optional in tool {spec.name!r}; "
-                    "an omitted argument would bypass the constraint",
-                    where=where,
-                )
+            for cap in caps:
+                arg = spec.resolve_arg(cap, arg_constraints.arg)
+                if arg not in spec.argument_names:
+                    raise PolicyError(
+                        f"constraint on {arg_constraints.arg!r} but covered tool "
+                        f"{spec.name!r} has no such argument",
+                        where=where,
+                    )
+                if require and arg not in required:
+                    raise PolicyError(
+                        f"constraint on {arg!r} but it is optional in tool {spec.name!r}; "
+                        "an omitted argument would bypass the constraint",
+                        where=where,
+                    )
 
 
 def _bind_task(task: TaskPolicy, registry: ToolRegistry) -> None:
@@ -484,7 +494,7 @@ def _bind_task(task: TaskPolicy, registry: ToolRegistry) -> None:
         tools = _covered_tools(grant.capability, specs)
         if not tools:
             raise PolicyError(f"capability {grant.capability!r} covers no tool", where=where)
-        _check_constrained_args(grant.constraints, tools, where)
+        _check_constrained_args(grant.capability, grant.constraints, tools, where, require=True)
         for arg in grant.approve_above:
             for spec in tools:
                 arg_schema = spec.args_schema.get("properties", {}).get(arg)
@@ -498,14 +508,7 @@ def _bind_task(task: TaskPolicy, registry: ToolRegistry) -> None:
         tools = _covered_tools(rule.capability, specs)
         if not tools:
             raise PolicyError(f"capability {rule.capability!r} covers no tool", where=where)
-        for spec in tools:
-            for arg_constraints in rule.constraints:
-                if arg_constraints.arg not in spec.argument_names:
-                    raise PolicyError(
-                        f"deny constraint on {arg_constraints.arg!r} but {spec.name!r} "
-                        "has no such argument",
-                        where=where,
-                    )
+        _check_constrained_args(rule.capability, rule.constraints, tools, where, require=False)
     for budget in task.budgets:
         where = f"tasks.{task.name}.budgets[{budget.id}]"
         tools = _covered_tools(budget.capability, specs)
