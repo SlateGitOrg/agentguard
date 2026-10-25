@@ -32,7 +32,7 @@ from agentguard.errors import AgentGuardError
 from agentguard.evaluation import CONFIG_NAMES, build_configs, run_suite, write_outputs
 from agentguard.labels import Label
 from agentguard.policy import Policy, load_policy
-from agentguard.providers import OpenAICompatProvider, ScriptedProvider
+from agentguard.providers import OpenAICompatProvider, PrefixedProvider, ScriptedProvider
 from agentguard.providers.base import ChatProvider
 from agentguard.scenarios import Scenario, load_scenarios
 from agentguard.session import GuardedSession, Mode, check_taint_invariant
@@ -149,7 +149,13 @@ def cmd_run(args: argparse.Namespace, out: TextIO) -> int:
         approver=_approver(args.approver, sys.stdin, out),
         mode=Mode(args.mode),
     )
-    run = run_agent(_provider(args), session, args.prompt, max_turns=args.max_turns)
+    run = run_agent(
+        _provider(args),
+        session,
+        args.prompt,
+        max_turns=args.max_turns,
+        max_calls_per_turn=None if args.script else 1,
+    )
     audit.close()
     for index, call in enumerate(run.calls, 1):
         _out(out, f"{index:>2}. {call.tool}({args_preview(call.args)})")
@@ -166,9 +172,13 @@ def cmd_run(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
-def _scenario_provider(model: str) -> Any:
+def _scenario_provider(model: str, prefix_steps: int) -> Any:
     def factory(scenario: Scenario) -> ChatProvider:
-        return OpenAICompatProvider(model=model)
+        real = OpenAICompatProvider(model=model)
+        if prefix_steps <= 0:
+            return real
+        scripted = ScriptedProvider.from_script(scenario.script[:prefix_steps])
+        return PrefixedProvider(scripted, real, prefix_steps)
 
     return factory
 
@@ -191,9 +201,10 @@ def cmd_eval(args: argparse.Namespace, out: TextIO) -> int:
             configs,
             args.worlds,
             split=args.split,
-            provider_factory=_scenario_provider(args.model),
-            provider_name=f"ollama:{args.model}",
+            provider_factory=_scenario_provider(args.model, args.prefix_steps),
+            provider_name=f"ollama:{args.model} (first {args.prefix_steps} step(s) scripted)",
             max_turns=args.max_turns,
+            max_calls_per_turn=args.calls_per_turn,
             progress=progress,
         )
     else:
@@ -332,6 +343,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--provider", choices=["scripted", "ollama"], default="scripted")
     p.add_argument("--model", default="llama3.1:8b")
     p.add_argument("--max-turns", type=int, default=10)
+    p.add_argument(
+        "--calls-per-turn",
+        type=int,
+        default=1,
+        help="ollama only: execute at most N tool calls per model turn (default 1)",
+    )
+    p.add_argument(
+        "--prefix-steps",
+        type=int,
+        default=1,
+        help="ollama only: force the first N scripted steps (the content-ingesting step)",
+    )
     p.add_argument("--out", help="directory for <stem>.json and <stem>.md")
     p.add_argument("--stem", default="scenarios-scripted")
 

@@ -166,3 +166,14 @@ def test_env_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENTGUARD_BASE_URL", "http://127.0.0.1:9/v1")
     p = OpenAICompatProvider()
     assert (p.model, p.base_url) == ("llama3.1:8b", "http://127.0.0.1:9/v1")
+
+
+def test_prefixed_provider_forces_then_delegates() -> None:
+    from agentguard.providers import PrefixedProvider
+
+    prefix = ScriptedProvider.from_script([{"call": "read_file", "args": {"path": "a"}}])
+    inner = ScriptedProvider.from_script([{"final": "inner speaking"}])
+    p = PrefixedProvider(prefix, inner, steps=1)
+    assert p.complete([], TOOLS).tool_calls[0].name == "read_file"
+    assert p.complete([], TOOLS).content == "inner speaking"
+    assert len(inner.seen) == 1

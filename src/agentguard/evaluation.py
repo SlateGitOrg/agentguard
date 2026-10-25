@@ -101,6 +101,7 @@ def run_suite(
     provider_factory: ProviderFactory = scripted_provider,
     provider_name: str = "scripted",
     max_turns: int = 10,
+    max_calls_per_turn: int | None = None,
     progress: Any = None,
 ) -> SuiteRun:
     """Run every (config, scenario) pair of ``split`` and summarise per config and split."""
@@ -111,7 +112,12 @@ def run_suite(
         for scenario in chosen:
             t0 = time.monotonic()
             result, _run, _world = run_scenario(
-                scenario, config, worlds_dir, provider_factory, max_turns=max_turns
+                scenario,
+                config,
+                worlds_dir,
+                provider_factory,
+                max_turns=max_turns,
+                max_calls_per_turn=max_calls_per_turn,
             )
             results.append(result)
             if progress is not None:

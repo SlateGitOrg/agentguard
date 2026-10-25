@@ -51,6 +51,9 @@ def test_scenarios_load_with_both_splits(root: Path) -> None:
 def test_guard_never_violates_the_taint_invariant(suite: Any) -> None:
     for summary in suite.summaries:
         assert summary.audit_failures == 0
+        if summary.config == "guard-unattended":
+            assert summary.tainted_high_attempts > 0
+            assert summary.tainted_high_executed == 0
         if summary.config not in ("unguarded", "ablation-no-taint"):
             assert summary.invariant_violations == 0, summary
 

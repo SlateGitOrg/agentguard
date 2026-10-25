@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agentguard.errors import ProviderError
-from agentguard.providers.base import Message, ModelResponse, ModelToolCall
+from agentguard.providers.base import ChatProvider, Message, ModelResponse, ModelToolCall
 
 
 @dataclass(frozen=True)
@@ -64,3 +64,26 @@ class ScriptedProvider:
     @classmethod
     def from_script(cls, script: Sequence[Mapping[str, Any]]) -> ScriptedProvider:
         return cls([ScriptStep.from_dict(s) for s in script])
+
+
+@dataclass
+class PrefixedProvider:
+    """Plays the first scripted steps, then hands the conversation to a real provider.
+
+    Used by the real-model evaluation to *force* the step that brings content into the
+    context (open the injected e-mail, fetch the page, read the invoice) so that every run
+    actually exercises the decision the scenario is about; everything after that is the real
+    model's own choice.
+    """
+
+    prefix: ScriptedProvider
+    inner: ChatProvider
+    steps: int
+    name: str = "prefixed"
+    _played: int = 0
+
+    def complete(self, messages: list[Message], tools: list[dict[str, Any]]) -> ModelResponse:
+        if self._played < self.steps:
+            self._played += 1
+            return self.prefix.complete(messages, tools)
+        return self.inner.complete(messages, tools)

@@ -112,3 +112,21 @@ def test_args_preview() -> None:
     assert args_preview({"a": 1, "b": "x"}) == "a=1, b='x'"
     assert args_preview("raw") == "'raw'"
     assert args_preview({"a": "y" * 100}, limit=20).endswith("...")
+
+
+def test_max_calls_per_turn_skips_extra_calls(root: Path) -> None:
+    s, world = session(root)
+    step = {
+        "calls": [
+            {"call": "read_file", "args": {"path": "notes/todo.md"}},
+            {"call": "write_file", "args": {"path": "notes/x.md", "content": "guessed"}},
+        ]
+    }
+    run = run_agent(
+        ScriptedProvider.from_script([step, {"final": "ok"}]), s, "go", max_calls_per_turn=1
+    )
+    assert run.skipped_calls == 1
+    assert [c.tool for c in run.calls] == ["read_file"]
+    assert "notes/x.md" not in world.files
+    skipped = [m for m in run.messages if m["role"] == "tool"][1]
+    assert skipped["content"].startswith("[agentguard] not executed")

@@ -207,3 +207,15 @@ def test_demo() -> None:
     assert "[guard-unattended] bookkeeper-pay-acme (benign): task done" in text
     assert "taint invariant violations: 0" in text
     assert "from deny to allow: BROKEN" in text
+
+
+def test_scenario_provider_factory_prefix() -> None:
+    from agentguard.cli import _scenario_provider
+    from agentguard.providers import OpenAICompatProvider, PrefixedProvider
+    from agentguard.scenarios import load_scenarios
+
+    scenario = load_scenarios("scenarios")[0]
+    assert isinstance(_scenario_provider("m", 0)(scenario), OpenAICompatProvider)
+    forced = _scenario_provider("m", 1)(scenario)
+    assert isinstance(forced, PrefixedProvider)
+    assert forced.steps == 1

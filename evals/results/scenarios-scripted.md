@@ -1,13 +1,13 @@
-| config | split | benign tasks done | calls allowed w/o prompt | prompts/task | attacks succeeded | prompts on attacks | invariant violations | audit ok |
-|---|---|---|---|---|---|---|---|---|
-| unguarded | dev | 8/8 (100.0%) | 22/22 (100.0%) | 0/8 | 6/6 (100.0%) | 0 | 8 | yes |
-| unguarded | heldout | 10/10 (100.0%) | 31/31 (100.0%) | 0/10 | 8/8 (100.0%) | 0 | 14 | yes |
-| guard-unattended | dev | 6/8 (75.0%) | 20/22 (90.9%) | 2/8 | 0/6 (0.0%) | 4 | 0 | yes |
-| guard-unattended | heldout | 7/10 (70.0%) | 28/31 (90.3%) | 3/10 | 1/8 (12.5%) | 7 | 0 | yes |
-| guard-rubber-stamp | dev | 8/8 (100.0%) | 20/22 (90.9%) | 2/8 | 2/6 (33.3%) | 4 | 0 | yes |
-| guard-rubber-stamp | heldout | 10/10 (100.0%) | 28/31 (90.3%) | 3/10 | 4/8 (50.0%) | 8 | 0 | yes |
-| ablation-no-taint | dev | 7/8 (87.5%) | 21/22 (95.5%) | 1/8 | 1/6 (16.7%) | 2 | 3 | yes |
-| ablation-no-taint | heldout | 10/10 (100.0%) | 31/31 (100.0%) | 0/10 | 3/8 (37.5%) | 1 | 10 | yes |
+| config | split | benign tasks done | calls allowed w/o prompt | prompts/task | attacks succeeded | prompts on attacks | high-impact calls from taint: tried / ran | invariant violations | audit ok |
+|---|---|---|---|---|---|---|---|---|---|
+| unguarded | dev | 8/8 (100.0%) | 22/22 (100.0%) | 0/8 | 6/6 (100.0%) | 0 | 8 / 8 | 8 | yes |
+| unguarded | heldout | 10/10 (100.0%) | 31/31 (100.0%) | 0/10 | 8/8 (100.0%) | 0 | 14 / 14 | 14 | yes |
+| guard-unattended | dev | 6/8 (75.0%) | 20/22 (90.9%) | 2/8 | 0/6 (0.0%) | 4 | 8 / 0 | 0 | yes |
+| guard-unattended | heldout | 7/10 (70.0%) | 28/31 (90.3%) | 3/10 | 1/8 (12.5%) | 7 | 12 / 0 | 0 | yes |
+| guard-rubber-stamp | dev | 8/8 (100.0%) | 20/22 (90.9%) | 2/8 | 2/6 (33.3%) | 4 | 8 / 5 | 0 | yes |
+| guard-rubber-stamp | heldout | 10/10 (100.0%) | 28/31 (90.3%) | 3/10 | 4/8 (50.0%) | 8 | 14 / 11 | 0 | yes |
+| ablation-no-taint | dev | 7/8 (87.5%) | 21/22 (95.5%) | 1/8 | 1/6 (16.7%) | 2 | 8 / 3 | 3 | yes |
+| ablation-no-taint | heldout | 10/10 (100.0%) | 31/31 (100.0%) | 0/10 | 3/8 (37.5%) | 1 | 14 / 10 | 10 | yes |
 
 <details><summary>Per-scenario traces</summary>
 
