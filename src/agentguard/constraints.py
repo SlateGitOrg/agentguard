@@ -438,8 +438,10 @@ def build_constraint(kind: str, spec: Any, where: str) -> Constraint:
 
 @dataclass(frozen=True)
 class ArgumentConstraints:
-    """All constraints on one argument. Lists are checked element-wise (every element must
-    pass). An absent optional argument has nothing to constrain and passes."""
+    """All constraints on one argument. For grants (``check``), lists are checked
+    element-wise and every element must pass; an absent optional argument has nothing to
+    constrain and passes. For deny rules (``satisfied_by_some``), one element that passes
+    every constraint is enough, so benign elements cannot dilute a forbidden one."""
 
     arg: str
     constraints: tuple[Constraint, ...]
@@ -456,3 +458,13 @@ class ArgumentConstraints:
                 if reason is not None:
                     failures.append(f"{self.arg}: {reason}")
         return failures
+
+    def satisfied_by_some(self, args: Mapping[str, Any]) -> bool:
+        """Existential match used by deny rules: the argument is present and at least one of
+        its values (the scalar itself, or any list element) satisfies every constraint. An
+        absent argument or an empty list has no such value."""
+        if self.arg not in args:
+            return False
+        value = args[self.arg]
+        values: Sequence[Any] = value if isinstance(value, list) else [value]
+        return any(all(c.check(item) is None for c in self.constraints) for item in values)

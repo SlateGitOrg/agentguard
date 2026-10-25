@@ -145,8 +145,9 @@ class Grant:
 
 @dataclass(frozen=True)
 class DenyRule:
-    """Explicit deny: matches when the capability matches and every constraint is satisfied
-    by an argument that is present. Deny rules win over grants."""
+    """Explicit deny: matches when the capability matches and every constrained argument is
+    present with at least one value satisfying all of its constraints (for a list argument,
+    any single element suffices). Deny rules win over grants."""
 
     capability: str
     constraints: tuple[ArgumentConstraints, ...]
@@ -155,10 +156,7 @@ class DenyRule:
     def matches(self, capability: str, args: Mapping[str, Any]) -> bool:
         if not capability_matches(self.capability, capability):
             return False
-        for arg_constraints in self.constraints:
-            if arg_constraints.arg not in args or arg_constraints.check(args):
-                return False
-        return True
+        return all(ac.satisfied_by_some(args) for ac in self.constraints)
 
 
 @dataclass(frozen=True)
