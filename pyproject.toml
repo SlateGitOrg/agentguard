@@ -57,6 +57,7 @@ ignore_missing_imports = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
+pythonpath = ["."]
 markers = ["ollama: requires a running local Ollama server (never part of make check)"]
 
 [tool.coverage.run]

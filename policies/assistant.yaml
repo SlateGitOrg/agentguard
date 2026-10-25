@@ -1,0 +1,146 @@
+# agentguard policy for the sandboxed "office assistant" tool set.
+#
+# Every task starts from nothing: a tool runs only if *each* capability it declares is
+# covered by a grant below whose constraints accept the call's arguments.
+version: 1
+name: office-assistant
+
+# What a context that has seen untrusted content (web pages, external e-mail, downloaded
+# files, anything written by an earlier tainted session) may still do, by tool impact.
+taint:
+  low: allow               # reads stay usable after browsing
+  medium: allow            # writing workspace notes/reports is contained and reversible
+  high: require_approval   # pay / send / delete / add payee need a human ('allow' is rejected)
+
+# What a context holding sensitive data may send out through egress tools.
+egress:
+  internal: allow
+  secret: require_approval
+
+tasks:
+  inbox-assistant:
+    description: triage the inbox, keep notes and reply to colleagues
+    max_tool_calls: 25
+    grants:
+      - id: list-mail
+        capability: email.list
+      - id: read-mail
+        capability: email.read
+      - id: read-work-files
+        capability: fs.read
+        constraints:
+          path: {glob: ["notes/**", "docs/**"]}
+      - id: list-work-files
+        capability: fs.list
+        constraints:
+          path: {glob: ["notes/**", "docs/**"]}
+      - id: write-notes
+        capability: fs.write
+        constraints:
+          path: {glob: ["notes/**"]}
+      - id: mail-colleagues
+        capability: email.send
+        constraints:
+          to: {email: {domains: ["example.com"]}}
+        rate: {calls: 5, per_seconds: 3600}
+
+  research-assistant:
+    description: read allow-listed documentation sites and write reports
+    max_tool_calls: 25
+    grants:
+      - id: browse-docs
+        capability: web.fetch
+        constraints:
+          url:   # argument 'url' ...
+            url: # ... constrained by the 'url' allow-list kind
+              hosts: ["docs.python.org", "*.wikipedia.org", "datatracker.ietf.org"]
+              schemes: [https]
+        rate: {calls: 10, per_seconds: 60}
+      - id: read-workspace
+        capability: fs.read
+        constraints:
+          path: {glob: ["reports/**", "notes/**", "docs/**", "downloads/**"]}
+      - id: list-workspace
+        capability: fs.list
+        constraints:
+          path: {glob: ["reports/**", "notes/**", "docs/**", "downloads/**"]}
+      - id: write-reports
+        capability: fs.write
+        constraints:
+          path: {glob: ["reports/**"]}
+      - id: share-reports
+        capability: email.send
+        constraints:
+          to: {email: {domains: ["example.com"]}}
+        rate: {calls: 3, per_seconds: 3600}
+
+  bookkeeper:
+    description: pay approved invoices to saved payees and file receipts
+    max_tool_calls: 25
+    grants:
+      - id: read-invoices
+        capability: fs.read
+        constraints:
+          path: {glob: ["invoices/**", "notes/**", "finance/**"]}
+      - id: list-invoices
+        capability: fs.list
+        constraints:
+          path: {glob: ["invoices/**", "finance/**"]}
+      - id: file-receipts
+        capability: fs.write
+        constraints:
+          path: {glob: ["receipts/**"]}
+      - id: read-mail
+        capability: email.read
+      - id: list-mail
+        capability: email.list
+      - id: view-accounts
+        capability: payments.read
+      - id: pay-vendors
+        capability: payments.transfer
+        constraints:
+          currency: {one_of: ["USD"]}
+          amount: {min: 0.01, max: 1000}
+        approve_above: {amount: 250}
+        rate: {calls: 5, per_seconds: 3600}
+      - id: new-payees
+        capability: payments.payees.add
+        approval: always
+      - id: notify-finance
+        capability: email.send
+        constraints:
+          to: {email: {addresses: ["finance@example.com", "controller@example.com"]}}
+    deny:
+      - capability: payments.transfer
+        constraints:
+          payee_id: {one_of: ["petty-cash"]}
+        reason: petty cash is reconciled by hand
+    budgets:
+      - {id: session-spend, capability: payments.transfer, currency: USD, limit: 1200}
+
+  file-organizer:
+    description: tidy the workspace folder
+    max_tool_calls: 40
+    grants:
+      - id: list-workspace
+        capability: fs.list
+        constraints:
+          path: {glob: ["workspace/**", "downloads/**"]}
+      - id: read-workspace
+        capability: fs.read
+        constraints:
+          path: {glob: ["workspace/**", "downloads/**"]}
+      - id: write-workspace
+        capability: fs.write
+        constraints:
+          path: {glob: ["workspace/**"], deny_glob: ["**/*.sh", "**/.env"]}
+      - id: delete-temp
+        capability: fs.delete
+        constraints:
+          path: {glob: ["workspace/tmp/**", "workspace/**/*.log"]}
+        rate: {calls: 10, per_seconds: 60}
+    deny:
+      - capability: fs.*
+        constraints:
+          path: {glob: ["**/.env", "**/secrets/**"]}
+        reason: credentials are never touched by the organizer
