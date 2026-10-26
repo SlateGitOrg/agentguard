@@ -258,7 +258,7 @@ minutes). `make check` runs 200 each. Properties covered:
 ### Coverage
 
 `make cov` (part of `make check`): **99% line+branch coverage** of `src/agentguard`
-(gate: 85%). 336 tests (`uv run pytest`).
+(gate: 85%). Run the suite with `uv run pytest`.
 
 ### Overhead
 
